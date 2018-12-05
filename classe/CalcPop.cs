@@ -4,65 +4,90 @@ using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
 using TheIsleAdminHelp.enumObj;
+using WinSCP;
 
 namespace TheIsleAdminHelp.classe
 {
     public class CalcPop
     {
-        private const string DIR_PLAYER = "TheIsle/Saved/Databases/Survival/Players";
+        private const string DIR_PLAYERS = "TheIsle/Saved/Databases/Survival/Players";
         private List<Dino> playerDinoList;
 
         public Stat Calcul(ProgressBar progress)
         {
-            playerDinoList = new List<Dino>();
-            Ftp ftp = new Ftp(Properties.Settings.Default.host + ":" + Properties.Settings.Default.port, Properties.Settings.Default.user, Properties.Settings.Default.password);
-            string [] listPlayer = ftp.directoryListSimple(DIR_PLAYER);
-            progress.Minimum = 0;
-            progress.Maximum = listPlayer.Length;
-            progress.Value = 0;
-            foreach(string player in listPlayer){
-                ftp.download(DIR_PLAYER + "/" + player, "temp.json");
+            SessionOptions sessionOptions = new SessionOptions
+            {
+                Protocol = Protocol.Ftp,
+                HostName = Properties.Settings.Default.host,
+                UserName = Properties.Settings.Default.user,
+                Password = Properties.Settings.Default.password,
+                PortNumber = Properties.Settings.Default.port,
+            };
 
-                using (StreamReader r = new StreamReader("temp.json"))
+            using (Session session = new Session())
+            {
+                playerDinoList = new List<Dino>();
+                // Connect
+                session.Open(sessionOptions);
+
+                // Get list of files in the directory
+                RemoteDirectoryInfo directoryInfo = session.ListDirectory(DIR_PLAYERS);
+                progress.Minimum = 0;
+                progress.Maximum = directoryInfo.Files.Count;
+                progress.Value = 0;
+
+                TransferOptions transferOptions = new TransferOptions();
+                transferOptions.TransferMode = TransferMode.Binary;
+                transferOptions.OverwriteMode = OverwriteMode.Overwrite;
+
+                foreach (RemoteFileInfo fileInfo in directoryInfo.Files)
                 {
-                    string json = r.ReadToEnd();
-                    try
+                    if (fileInfo.LastWriteTime >= new DateTime(2018, 12, 01))
                     {
-                        string idTypeDino = "";
-                        bool genre = false;
-                        Race espece = Race.Autre;
-                        dynamic array = JsonConvert.DeserializeObject(json);
-                        foreach (var item in array)
+                        TransferOperationResult transferResult = session.GetFiles(fileInfo.FullName + "*", "temp.json", false, transferOptions);
+                        // Throw on any error
+                        transferResult.Check();
+                        if (File.Exists(@"temp.json"))
                         {
-                            if (item.Name == "CharacterClass")
+                            using (StreamReader r = new StreamReader(@"temp.json"))
                             {
-                                idTypeDino = item.Value.Value;
+                                string json = r.ReadToEnd();
+                                try
+                                {
+                                    string idTypeDino = "";
+                                    bool genre = false;
+                                    Race espece = Race.Autre;
+                                    dynamic array = JsonConvert.DeserializeObject(json);
+                                    foreach (var item in array)
+                                    {
+                                        if (item.Name == "CharacterClass")
+                                        {
+                                            idTypeDino = item.Value.Value;
+                                        }
+                                        if (item.Name == "bGender")
+                                        {
+                                            genre = item.Value.Value;
+                                        }
+                                    }
+                                    foreach (Race race in (Race[])Enum.GetValues(typeof(Race)))
+                                    {
+                                        if (idTypeDino.Contains(Enum.GetName(typeof(Race), race)))
+                                        {
+                                            espece = race;
+                                        }
+                                    }
+                                    playerDinoList.Add(new Dino(espece, genre, idTypeDino));
+                                }
+                                catch (JsonReaderException)
+                                {
+                                    //do nothing c'est les "fichiers" dossier
+                                }
                             }
-                            if (item.Name == "bGender")
-                            {
-                                genre = item.Value.Value;
-                            }
+                            File.Delete(@"temp.json");
                         }
-                        foreach (Race race in (Race[])Enum.GetValues(typeof(Race)))
-                        {
-                            if (idTypeDino.Contains(Enum.GetName(typeof(Race), race)))
-                            {
-                                espece = race;
-                            }
-                        }
-                        playerDinoList.Add(new Dino(espece, genre, idTypeDino));
                     }
-                    catch (JsonReaderException)
-                    {
-                        //do nothing c'est les "fichiers" dossier
-                    }
-                    
                     progress.Value++;
                 }
-            }
-            if (File.Exists(@"temp.json"))
-            {
-                File.Delete(@"temp.json");
             }
             return CalculStat();
         }
