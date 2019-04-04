@@ -42,7 +42,8 @@ namespace TheIsleAdminHelp.classe
 
                 foreach (RemoteFileInfo fileInfo in directoryInfo.Files)
                 {
-                    if (fileInfo.LastWriteTime >= new DateTime(2018, 12, 01))
+                    DateTime today = DateTime.Today;
+                    if (fileInfo.LastWriteTime >= today.AddDays(-14))
                     {
                         TransferOperationResult transferResult = session.GetFiles(fileInfo.FullName + "*", "temp.json", false, transferOptions);
                         // Throw on any error
