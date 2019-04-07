@@ -1,4 +1,4 @@
-package com.firePigeon.theIsleAdminTool;
+package com.firePigeon.theIsleAdminHelpTool;
 
 import junit.framework.Test;
 import junit.framework.TestCase;

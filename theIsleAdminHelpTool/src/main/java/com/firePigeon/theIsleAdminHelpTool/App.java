@@ -1,23 +1,23 @@
 package com.firePigeon.theIsleAdminHelpTool;
 
-import javafx.application.Application;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.stage.Stage;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
-/**
- * Hello world!
- *
- */
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.layout.Pane;
+import javafx.stage.Stage;
+import javafx.fxml.FXMLLoader;
+
 public class App extends Application
 {
 	@Override
     public void start(Stage primaryStage) throws Exception {
-		Label label = new Label("Hello World");
-        label.setAlignment(Pos.CENTER);
-        primaryStage.setScene(new Scene(label, 300, 250));
-        primaryStage.setTitle("Hello World Application");
+		ResourceBundle languageResource = ResourceBundle.getBundle("i18n.text", Locale.getDefault());
+		Pane root = (Pane) FXMLLoader.load(App.class.getResource("fxml/start.fxml"),languageResource);
+
+        primaryStage.setScene(new Scene(root));
+        primaryStage.setTitle("the Isle Admin Help Tool");
         primaryStage.show();
     }
 	
